@@ -19,7 +19,7 @@
 
 # -- Project information -----------------------------------------------------
 
-project = 'Gachain Blockchain Platform Guide'
+project = 'GAChain Blockchain Platform Guide'
 copyright = '2019, gachain'
 author = 'gachain'
 

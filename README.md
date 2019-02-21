@@ -1,5 +1,7 @@
 # 政务链GAChain系统平台的技术开发文档
 
+[![Documentation Status](https://readthedocs.org/projects/gachain/badge/?version=latest)](https://gachain.readthedocs.io/zh/latest/?badge=latest)
+
 政务链GAChain是一个可高效构建数字生态系统的公共区块链系统平台。  
 
 该文档为政务链GAChain系统平台的技术开发文档，包含平台描述、节点部署、开发示例、合约开发语言GALang、模版开发语言GAStyle的使用方法等。
@@ -16,7 +18,7 @@
 
 安装Sphinx等
 --------------------------------------------------------------------------------
-对于OSX / Linux用户（根据以下说明：https://read-the-docs.readthedocs.org/en/latest/getting_started.html)。从1.4.0开始，Sphinx不再自动安装 ``sphinx_rtd_theme`` ，因此在下面添加它。
+对于OSX / Linux用户（根据以下说明： https://read-the-docs.readthedocs.org/en/latest/getting_started.html )。从1.4.0开始，Sphinx不再自动安装 ``sphinx_rtd_theme`` ，因此在下面添加它。
 
 * 命令: ``sudo pip install sphinx sphinx_rtd_theme``
 
