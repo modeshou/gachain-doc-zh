@@ -276,7 +276,7 @@ IDE主要包括以下部分:
 请求web资源
 -------------
 
-VDE和标准生态系统之间的主要区别在于可以使用 **HTTPRequest** （:ref:`galang-HTTPRequest`）和 **HTTPPostJSON** （:ref:`galang-HTTPRequest`）合约函数通过 *HTTP / HTTPS* 请求方式在合约内向任何Web资源发出请求。传递给此函数的参数为：URL，请求方法（GET或POST），请求头和请求参数。
+VDE和标准生态系统之间的主要区别在于可以使用 **HTTPRequest** （:ref:`galang-HTTPRequest`）和 **HTTPPostJSON** （:ref:`galang-HTTPPostJSON`）合约函数通过 *HTTP / HTTPS* 请求方式在合约内向任何Web资源发出请求。传递给此函数的参数为：URL，请求方法（GET或POST），请求头和请求参数。
 
 
 读取数据权限

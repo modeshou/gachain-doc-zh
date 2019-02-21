@@ -54,5 +54,45 @@
    :caption: 概念
 
    concepts/about-the-platform.rst
+   concepts/blockchain-layers.rst
+   concepts/blockchain-basics.rst
+   concepts/consensus.rst
+   concepts/faq.rst
+   concepts/thesaurus.rst
+
+
+.. toctree::
+   :maxdepth: 2
+   :caption: 教程
+
+   tutorials/app_tutorial.rst
+
+
+.. toctree::
+   :maxdepth: 2
+   :caption: 指南
+
+   topics/script.rst
+   topics/templates2.rst
+   topics/appexample.rst
+   topics/vm.rst
+   topics/daemons.rst
+
+
+.. toctree::
+   :maxdepth: 2
+   :caption: 参考
+
+   reference/api2.rst
+   reference/platform-parameters.rst
+   reference/backend-config.rst
+   reference/desync_monitor.rst
+
+
+.. toctree::
+   :maxdepth: 2
+   :caption: 部署
+
+   howtos/deployment.rst
 
 .. todolist::
