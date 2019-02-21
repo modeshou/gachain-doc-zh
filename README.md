@@ -16,7 +16,7 @@
 
 安装Sphinx等
 --------------------------------------------------------------------------------
-对于OSX / Linux用户（根据以下说明：https://read-the-docs.readthedocs.org/en/latest/getting_started.html)。从1.4.0开始，Sphinx不再自动安装``sphinx_rtd_theme``，因此在下面添加它。
+对于OSX / Linux用户（根据以下说明：https://read-the-docs.readthedocs.org/en/latest/getting_started.html)。从1.4.0开始，Sphinx不再自动安装 ``sphinx_rtd_theme`` ，因此在下面添加它。
 
 * 命令: ``sudo pip install sphinx sphinx_rtd_theme``
 
