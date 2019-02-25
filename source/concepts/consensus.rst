@@ -84,7 +84,7 @@ PoA机制可以抵御这种攻击：
 
 .. describe:: first
 
-    创世区块生成时间 (UNIX）。
+    创始区块生成时间 (UNIX）。
 
 .. describe:: step
 
