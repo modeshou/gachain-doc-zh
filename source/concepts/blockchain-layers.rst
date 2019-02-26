@@ -133,7 +133,7 @@ Govis客户端:
     - 实现区块链协议；
     - 在 :doc:`虚拟机 </topics/vm>` 执行合约代码；
     - 在 :doc:`模版引擎 </topics/templates2>` 执行页面代码；
-    - 实现 :doc:`REST API</reference/api2>` 接口。
+    - 实现 :doc:`RESTful API</reference/api2>` 接口。
 
 .. todo::
 

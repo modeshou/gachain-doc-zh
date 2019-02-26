@@ -981,14 +981,20 @@ ecosystems
 
 
 
-appparams
----------
+appparams/{appID}
+-------------------
 
 **GET**/ 返回当前或指定生态系统中的应用程序参数列表。
  
 
 请求
 """""""
+
+.. code-block:: default
+    
+    GET
+    /api/v2/appparams
+    
  
 * *[appid]*
 
@@ -1053,6 +1059,11 @@ appparam/{appid}/{name}
 请求
 """""""
 
+.. code-block:: default
+    
+    GET
+    /api/v2/appparam/{appid}/{name}[?ecosystem=1]
+
 * *appid*
 
     应用程序ID。
@@ -1066,12 +1077,6 @@ appparam/{appid}/{name}
     生态系统ID（可选参数）。
     
     默认返回当前的生态系统。
-
-.. code-block:: default
-    
-    GET
-    /api/v2/appparam/{appid}/{name}[?ecosystem=1]
-    
 
 响应
 """"""""
