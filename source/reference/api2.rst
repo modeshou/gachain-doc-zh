@@ -2019,6 +2019,7 @@ sendTX
 
 *E_LIMITTXSIZE*,*E_BANNED*
 
+.. _api-txstatus:
 
 txstatus
 --------
