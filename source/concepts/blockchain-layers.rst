@@ -134,7 +134,3 @@ Govis客户端:
     - 在 :doc:`虚拟机 </topics/vm>` 执行合约代码；
     - 在 :doc:`模版引擎 </topics/templates2>` 执行页面代码；
     - 实现 :doc:`RESTful API</reference/api2>` 接口。
-
-.. todo::
-
-    Make the templates link refer to a more specific heading: Interface Template Engine.

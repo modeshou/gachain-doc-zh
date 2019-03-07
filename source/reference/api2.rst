@@ -2447,6 +2447,7 @@ content/hash/{name}
 
 *E_NOTFOUND, E_SERVER, E_HEAVYPAGE*
 
+.. _api-content:
 
 content
 -------

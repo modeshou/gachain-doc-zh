@@ -83,10 +83,6 @@
 区块和交易验证
 ----------------
 
-.. todo::
-
-    This validation algorythm description must be moved to a separate topic.
-
 验证节点在产生新区块块之后执行新区块验证，以及在收到此区块后在所有其他验证节点上验证此区块，包括以下验证：
 
     * 接收数据的一个字节应该是为 `0` ，如果不是，则接收的数据不被视为区块；

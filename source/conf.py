@@ -104,7 +104,7 @@ html_static_path = ['_static']
 # -- Options for HTMLHelp output ---------------------------------------------
 
 # Output file base name for HTML help builder.
-htmlhelp_basename = 'GachainEnDoc'
+htmlhelp_basename = 'GAChainEnDoc'
 
 
 # -- Options for LaTeX output ------------------------------------------------
@@ -131,7 +131,7 @@ latex_elements = {
 # (source start file, target name, title,
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
-    (master_doc, 'GachainBlockchainPlatformGuide.tex', 'Gachain Blockchain Platform Guide',
+    (master_doc, 'GAChainBlockchainPlatformGuide.tex', 'GAChain Blockchain Platform Guide',
      'gachain', 'manual'),
 ]
 
@@ -141,7 +141,7 @@ latex_documents = [
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
 man_pages = [
-    (master_doc, 'gachainblockchainplatformguide', 'Gachain Blockchain Platform Guide',
+    (master_doc, 'gachainblockchainplatformguide', 'GAChain Blockchain Platform Guide',
      [author], 1)
 ]
 
@@ -152,8 +152,8 @@ man_pages = [
 # (source start file, target name, title, author,
 #  dir menu entry, description, category)
 texinfo_documents = [
-    (master_doc, 'GachainBlockchainPlatformGuide', 'Gachain Blockchain Platform Guide',
-     author, 'GachainBlockchainPlatformGuide', 'Public blockchain platform for building digital ecosystems.',
+    (master_doc, 'GAChainBlockchainPlatformGuide', 'GAChain Blockchain Platform Guide',
+     author, 'GAChainBlockchainPlatformGuide', 'Public blockchain platform for building digital ecosystems.',
      'Miscellaneous'),
 ]
 

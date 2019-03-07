@@ -1917,7 +1917,7 @@ TransactionInfo
 
     .. describe:: params
 
-        传递给合约的参数。
+        传递给合约参数的数据。
 
     .. describe:: block
 
