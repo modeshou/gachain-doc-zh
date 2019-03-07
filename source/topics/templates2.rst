@@ -834,7 +834,7 @@ Code
 
 创建用于显示指定代码的 **code** 元素。
 
-这个函数用变量的值替换变量(例如 ``#name#``)。
+该函数用变量的值替换变量(例如 ``#name#``)。
 
 语法
 """"""
@@ -879,7 +879,7 @@ CodeAsIs
 
     .. describe:: Text  
 
-        Source code.
+        源代码。
 
 示例
 """""""
@@ -992,6 +992,7 @@ DBFind
 ------
 
 创建 **dbfind** 元素，用 *table* 表的数据填充它并将其放到 *Source* 结构中。该 *Source* 结构可以在随后用于 :ref:`gastyle-Table` 和其他函数 *Source* 的输入数据。
+
 语法
 """"""
 
@@ -1446,8 +1447,8 @@ GetVar
 ------
 
 该函数返回已存在的指定变量值，如果不存在则返回空字符串。
-An element with **getvar** name is created only when a tree for editing is requested. The difference between ``GetVar(varname)`` and ``#varname#`` is that in case *varname* does not exist, *GetVar* will return an empty string, whereas *#varname#* will be interpreted as a string value.
 
+只有在请求编辑树时，才会创建 **getvar** 元素。``GetVar(varname)`` 和 ``#varname`` 间的区别是，如果 *varname* 不存在，*GetVar* 将返回一个空字符串，而 *#varname#* 将被解释为一个字符串值。
 
 语法
 """"""
