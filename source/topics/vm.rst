@@ -96,7 +96,7 @@ VM结构具有以下元素：
 
   * **Type** - 块的类型。块为函数时，类型为 **ObjFunc**。块为合约时，类型为 **ObjContract**；
 
-  * **Owner** - 一个 **OwnerInfo** 指针类型的结构。该结构包含有关已编译合约所有者的信息。它在合同编译期间指定或从 **contracts** 表中获取；
+  * **Owner** - 一个 **OwnerInfo** 指针类型的结构。该结构包含有关已编译合约所有者的信息。它在合约编译期间指定或从 **contracts** 表中获取；
 
   * **Info** - 包含有关对象的信息，这取决于块类型；
 
@@ -644,5 +644,552 @@ VM的其他函数操作
   * **buffer** – 字节码指令的临时缓冲区；
   * **bytecode** – 字节码指令的最终缓冲区；
   * **parcount** – 调用函数时用于计算参数的临时缓冲区；
-  * **setIndex** – 当我们分配 *map* 或 *array* 元素时，工作过程中的变量被设置为 `true`。例如，``a["my"] = 10``，在这种情况下，我们需要使用指定的**cmdSetIndex** 指令。
+  * **setIndex** – 当我们分配 *map* 或 *array* 元素时，工作过程中的变量被设置为 `true`。例如，``a["my"] = 10``，在这种情况下，我们需要使用指定的 **cmdSetIndex** 指令。
 
+我们在一个循环体中获得一个标记并作出相应的处理，例如，如果找到大括号，然后停止解析表达式。在移动字符串时，我们会查看前一个语句是否是一个操作符以及是否在括号内，否则我们退出并解析表达式。
+
+.. code:: 
+
+    case isRCurly, isLCurly:
+         i--
+         if prevLex == isComma || prevLex == lexOper {
+				    return errEndExp
+			   }
+        break main
+    case lexNewLine:
+          if i > 0 && ((*lexems)[i-1].Type == isComma || (*lexems)[i-1].Type == lexOper) {
+               continue main
+          }
+         for k := len(buffer) - 1; k >= 0; k-- {
+              if buffer[k].Cmd == cmdSys {
+                  continue main
+             }
+         }
+        break main
+
+通常情况下，该算法本身对应于一种转换为逆波兰表示法的算法。考虑到一些必要的合约、函数、索引的调用，以及解析时不会遇到的其他事情和解析 *lexIdent* 类型标记的选项，我们将检查具有此名称的变量、函数或合约。如果没有找到任何相关内容而且这不是函数或合约调用，那么我们会指出错误。
+
+.. code:: 
+
+    objInfo, tobj := vm.findObj(lexem.Value.(string), block)
+    if objInfo == nil && (!vm.Extern || i > *ind || i >= len(*lexems)-2 || (*lexems)[i+1].Type != isLPar) {
+          return fmt.Errorf(`unknown identifier %s`, lexem.Value.(string))
+    }
+
+我们可能会遇到这样的情况，稍后将描述合约调用。在本例中，如果没有找到同名函数和变量，那么我们认为将调用合约。在该编译语言中，合约和函数调用没有区别。但是我们需要通过在字节码中使用的 **ExecContract** 函数来调用合约。
+    
+ .. code:: 
+
+    if objInfo.Type == ObjContract {
+        if objInfo.Value != nil {
+				  objContract = objInfo.Value.(*Block)
+				}
+        objInfo, tobj = vm.findObj(`ExecContract`, block)
+        isContract = true
+    }
+    
+我们将到目前为止的变量数量记录在 ``count`` 中，该值也会随着函数参数数量一起写入堆栈。在每次后续检测参数时，我们只需在堆栈的最后一个元素中将该数量增加一个单位。
+
+.. code:: 
+
+    count := 0
+    if (*lexems)[i+2].Type != isRPar {
+        count++
+    }
+
+我们有已调用合约的列表参数 *Used*，因此我们需要为合约被调用的情况做标记。如果在没有参数的情况下调用合约，我们必须添加两个空参数去调用 **ExecContract**，以获得最少两个参数。
+
+.. code:: 
+
+    if isContract {
+       name := StateName((*block)[0].Info.(uint32), lexem.Value.(string))
+       for j := len(*block) - 1; j >= 0; j-- {
+          topblock := (*block)[j]
+          if topblock.Type == ObjContract {
+                if topblock.Info.(*ContractInfo).Used == nil {
+                     topblock.Info.(*ContractInfo).Used = make(map[string]bool)
+                }
+               topblock.Info.(*ContractInfo).Used[name] = true
+           }
+        }
+        bytecode = append(bytecode, &ByteCode{cmdPush, name})
+        if count == 0 {
+           count = 2
+           bytecode = append(bytecode, &ByteCode{cmdPush, ""})
+           bytecode = append(bytecode, &ByteCode{cmdPush, ""})
+         }
+        count++
+
+    }
+    
+If we see that there is a square bracket next, then we add the **cmdIndex** command to get the value by the index.
+
+.. code:: 
+
+    if (*lexems)[i+1].Type == isLBrack {
+         if objInfo == nil || objInfo.Type != ObjVar {
+             return fmt.Errorf(`unknown variable %s`, lexem.Value.(string))
+         }
+        buffer = append(buffer, &ByteCode{cmdIndex, 0})
+    }
+
+**CompileBlock** 函数可以生成对象树和与表达式无关的字节码。编译过程基于有限状态机，就像词法分析器一样，但是有以下不同之处。第一，我们不使用符号但使用标记；第二，我们会立即描述所有状态和转换中的 *states* 变量。它表示一个按标记类型索引的对象数组，每个标记都具有 *compileState* 的结构，并在 *NewState* 中指定一个新状态。如果我们已经解析清楚这是什么结构，那么就可以指定 *Func* 字段中处理程序的函数。
+
+让我们以主状态为例回顾一下。
+
+如果我们遇到换行符或注释，那么我们会保持相同的状态。如果我们遇到 **contract** 关键字，那么我们将状态更改为 *stateContract* 并开始解析该结构。如果我们遇到 **func** 关键字，那么我们将状态更改为 *stateFunc*。如果接收到其他标记，那么将调用生成错误的函数。
+
+.. code:: 
+
+    { // stateRoot
+       lexNewLine: {stateRoot, 0},
+       lexKeyword | (keyContract << 8): {stateContract | statePush, 0},
+       lexKeyword | (keyFunc << 8): {stateFunc | statePush, 0},
+       lexComment: {stateRoot, 0},
+       0: {errUnknownCmd, cfError},
+    },
+
+假设我们遇到了 **func** 关键字，并且我们已将状态更改为 *stateFunc*。由于函数名必须跟在 **func** 关键字后面，因此在更改该函数名时，我们将保持相同的状态。对于所有其他标记，我们生成相应的错误。如果我们在标记标识符中获取了函数名称，那么我们转到 *stateFParams* 状态，其中我们可以获取函数的参数。
+
+.. code:: 
+
+    { // stateFunc
+        lexNewLine: {stateFunc, 0},
+        lexIdent: {stateFParams, cfNameBlock},
+        0: {errMustName, cfError},
+    },
+
+上述操作的同时，我们将调用 **fNameBlock** 函数。应该注意的是，*块Block* 结构是使用 *statePush* 标记创建的，在这里我们从缓冲区中获取它并填充我们需要的数据。**fNameBlock** 函数适用于合约和函数(包括嵌套在其中的函数和合约)。它使用相应的结构填充 *Info* 字段，并将其自身写入父块的 *Objects* 中。这样以便我们可以通过指定的名称调用该函数或合约。同样，我们为所有状态和变量创建对应的函数。这些函数通常非常小，并且在构造虚拟机树时执行一些工作。
+
+.. code:: 
+
+    func fNameBlock(buf *[]*Block, state int, lexem *Lexem) error {
+        var itype int
+
+        prev := (*buf)[len(*buf)-2]
+        fblock := (*buf)[len(*buf)-1]
+       name := lexem.Value.(string)
+       switch state {
+         case stateBlock:
+            itype = ObjContract
+           name = StateName((*buf)[0].Info.(uint32), name)
+           fblock.Info = &ContractInfo{ID: uint32(len(prev.Children) - 1), Name: name,
+               Owner: (*buf)[0].Owner}
+        default:
+           itype = ObjFunc
+           fblock.Info = &FuncInfo{}
+         }
+         fblock.Type = itype
+        prev.Objects[name] = &ObjInfo{Type: itype, Value: fblock}
+        return nil
+    }
+
+对于 **CompileBlock** 函数，它只是遍历所有标记并根据 *states* 中描述的标记切换状态。几乎所有附加标记对应附加程序代码。
+
+  * **statePush** – 将 **块Block** 对象添加到对象树中；
+  * **statePop** – 当块以结束花括号结束时使用；
+  * **stateStay** – 当更改为新状态时，您需要保留当前标记；
+  * **stateToBlock** – 转换到 **stateBlock** 状态，用于处理 *while* 和 *if*。当处理完表达式后，需要在大括号内处理块使用；
+  * **stateToBody** – 转换到 **stateBody** 状态；
+  * **stateFork** – 保存标记的位置。当表达式以标识符或带有 ``$`` 名称开头时使用，我们可以进行函数调用或赋值；
+  * **stateToFork** – 用于获取存储在 **stateFork** 中的标记。该标记将传递给进程函数；
+  * **stateLabel** – 用于插入 **cmdLabel** 指令。*while* 结构需要这个标记；
+  * **stateMustEval** – 在 *if* 和 *while* 结构的开头检查条件表达式的可用性。
+    
+除了 **CompileBlock** 函数，还应该提到 **FlushBlock** 函数。但问题是块树是独立于现有虚拟机构建的，更准确地说，我们获取有关虚拟机中存在的函数和合约的信息，但我们将已编译的块收集到一个单独的树中。否则，如果在编译期间发生错误，我们必须将虚拟机的状态回滚到以前的状态。因此，我们单独去编译树，但编译成功后必须调用 **FlushContract** 函数。这个函数将完成的块树添加到当前虚拟机中。此时编译阶段就完成了。
+
+
+词法分析器
+================
+
+词法分析器将传入的字符串处理并形成以下类型的标记序列：
+
+  * **lexSys** - 系统标记，例如：``{}``，``[]``，``()``，``,``，``.`` 等；
+  * **lexOper** – 操作标记，例如：``+``，``-``，``/``，``\``，``*``；
+  * **lexNumber** – 数字；
+  * **lexident** – 标识符；
+  * **lexNewline** – 换行符；
+  * **lexString** – 字符串；
+  * **lexComment** – 注释；
+  * **lexKeyword** – 关键字；
+  * **lexType** – 类型；
+  * **lexExtend** – 引用外部变量或函数，例如：``$myname``。
+
+在当前版本中，初步借助于 :ref:`script/lextable/lextable.go <lextable>` 文件构造了一个转换表(有限状态机)来解析标记，并将其写入 *lex_table.go* 文件。通常情况下，您可以脱离该文件初始生成的转换表，可以在启动时立即在内存(``init()``)中创建一个转换表。词法分析本身发生在 :ref:`lex.go <lexgo>` 文件中的 **lexParser** 函数中。
+
+.. _lextable:
+
+lextable/lextable.go
+----------------------------
+
+在这里我们定义了我们的语言用于操作的字母表，并描述有限状态机根据下一个接收到的符号从一种状态变化到另一种状态。
+
+*states* 包含一个状态列表的JSON对象。
+
+除特定符号外，``d`` 用于表示状态中未指明的所有符号。
+
+``n`` 代表0x0a，``s`` 代表空格，``q`` 代表反引号，``Q`` 代表双引号，``r`` 代表字符 >= 128，``a`` 代表AZ和az，``1`` 代表1-9。
+
+状态的名称是键，值对象中列出了可能的值。然后，对于每一组，都有一种新的状态需要转换。然后是标记的名称，如果我们需要返回到初始状态，第三个参数是服务标志，它指示了如何处理当前符号。
+
+例如，我们有主状态和传入字符 ``/``，``"/": ["solidus", "", "push next"],``
+
+  * **push** - 给指令记住它在一个单独的堆栈；
+
+  * **next** - 转到下一个字符，同时我们将状态更改为 **solidus**，之后，获取下一个角色并查看 **solidus** 的状态。
+
+如果下一字符有 ``/`` 或 ``/*``，那么我们转到注释 **comment** 状态，因为它们以 ``//`` 或 ``/*`` 开头。显然，每个注释后续都有不同的状态，因为它们以不同的符号结束。
+
+如果下一字符不是 ``/`` 和 ``*``，那么我们将堆栈中的所有内容记录为 **lexOper** 类型的标记，清除堆栈并返回主状态。
+
+以下模块将状态树转换为一个数值数组，并将其写入 *lex_table.go* 文件。
+
+在第一个循环体中：
+
+我们形成有效符号的字母表。
+
+.. code:: 
+
+    for ind, ch := range alphabet {
+    i := byte(ind)
+
+此外，在 **state2int** 中，我们为每个状态提供了自己的序列标识符。
+
+.. code:: 
+
+    state2int := map[string]uint{`main`: 0}
+    if err := json.Unmarshal([]byte(states), &data); err == nil {
+    for key := range data {
+    if key != `main` {
+    state2int[key] = uint(len(state2int))
+
+当我们遍历所有状态和状态中的每个集合以及该集合中的每个符号时，我们写入一个三字节的数字[新状态标识符（0 = main）] + [标记类型（0-没有标记）] + [标记]。
+
+*table* 数组的二维性在于它分为状态和来自 *alphabet* 数组的34个输入符号，它们以相同的顺序排列。
+
+我们处于 *table* 零行上的 *main* 状态。取第一个字符，在 *alphabet* 数组中查找其索引，并从给定索引的列中获取值。从接收到的值开始，我们在低位字节接收标记。如果解析完成，第二个字节表示接收到的标记类型。在第三个字节中，我们接收下一个新状态的索引。
+
+所有这些在 *lex.go* 中的 **lexParser** 函数中有更详细的描述。
+
+如果想要添加一些新字符，则需要将它们添加到 *alphabet* 数组并增加 *AlphaSize* 常量。 如果要添加新的符号组合，则应在状态中对其进行描述，类似于现有选项。在此之后，运行 *lextable.go* 文件来更新 *lex_table.go* 文件。
+
+.. _lexgo:
+
+lex.go
+------------
+
+**lexParser** 函数直接生成词法分析，并根据传入的字符串返回一个已接收标记的数组。让我们分析标记的结构。
+
+.. code:: 
+
+    type Lexem struct {
+       Type uint32 // Type of the lexem
+       Value interface{} // Value of lexem
+       Line uint32 // Line of the lexem
+       Column uint32 // Position inside the line
+    }
+
+* **Type** – 标记类型。它有以下值之一：``lexSys, lexOper, lexNumber, lexIdent, lexString, lexComment, lexKeyword, lexType, lexExtend``；
+
+* **Value** – 标记的值。值的类型取决于标记类型，让我们更详细地分析一下：
+
+  * **lexSys** – 包括括号，逗号等。在这种情况下，``Type = ch << 8 | lexSys``，请参阅 ``isLPar ... isRBrack`` 常量，该值为uint32位；
+  * **lexOper** – 值以uint32的形式表示等价的字符序列。请参阅 ``isNot ... isOr`` 常量；
+  * **lexNumber** – 数字存储为 *int64* 或 *float64*。如果数字有一个小数点，那么为 *float64*；
+  * **lexIdent** – 标识符存储为 *字符串string*；
+  * **lexNewLine** – 换行符。还用于计算行和标记位置；
+  * **lexString** –  行存储为 *字符串string*；
+  * **lexComment** – 注释存储为 *字符串string*；
+  * **lexKeyword** – 关键字仅存储相应的索引，请参阅 ``keyContract ... keyTail`` 常量。在这种情况下 ``Type = KeyID << 8 | lexKeyword``。另外，应该注意的是，``true,false,nil`` 关键字会立即转换为 **lexNumber** 类型的标记，并使用相应的 ``bool`` 和 ``intreface {}`` 类型；
+  * **lexType** – 该值包含相应的 ``reflect.Type`` 类型值；
+  * **lexExtend** – 以美元符号 ``$`` 开头的标识符。这些变量和函数从外部传递，因此分配给特殊类型的标记。该值包含字符串形式的名称，开头没有美元符号。
+
+* **Line** – 标记所在行；
+* **Column** – 标记的行内位置。
+
+让我们详细分析 **lexParser** 函数。**todo** 函数根据当前状态和传入符号，查找字母表中的符号索引，并从转换表中获取一个新状态、标记标识符(如果有的话)和其他标记。解析本身包括对每下一个字符依次调用 **todo** 函数，并切换到新的状态。一旦接收到标记，我们就在输出准则中创建相应的标记并继续解析。应该注意的是，在解析过程中，我们不将标记符号累积到单独的堆栈或数组中，因为我们只是保存标记开始的偏移量。获得标记之后，我们将下一个标记的偏移量移动到当前解析位置。
+
+剩下的就是检查解析中使用的词法状态标志：
+
+  * **lexfPush** – 该标志意味着我们开始在一个新的标记中累积符号；
+  * **lexfNext** – 必须将该字符添加到当前标记；
+  * **lexfPop** – 接收标记完成，通常，使用该标志我们有解析标记的标识符类型；
+  * **lexfSkip** – 该标志用于从解析中排除字符，例如，字符串中的控件斜线为 ``\n \r \"``。它们会在该词法分析阶段自动替换。
+
+|galangres| 语言
+=======================
+
+词法
+-------
+
+程序的源代码必须采用UTF-8编码。
+
+以下词法类型: 
+
+  * **关键字** - ``action``, ``break``, ``conditions``, ``continue``, ``contract``, ``data``, ``else``, ``error``, ``false``, ``func``, ``if``, ``info``, ``nil``, ``return``, ``settings``, ``true``, ``var``, ``warning``, ``while``；
+
+  * **数字** - 只接收十进制数字。有两种基本类型: **int** 和 **float**。如果数字有一个小数点，它就变成了浮点数 **float**。**int** 类型等价于golang中的 **int64**。**float** 类型等价于golang中的 **float64**。
+
+  * **字符串** - 字符串可以用双引号 (``"a string"``) 或反引号( ``\`a string\```)。这两种类型的字符串都可以包含换行符。双引号中的字符串可以包含双引号、换行符和用斜杠转义的回车符。例如， ``"This is a \"first string\".\r\nThis is a second string."``。
+
+  * **注释** - 有两种类型的评论。单行注释使用两个斜杠符号 (``//``)。例如，``// 这是单行注释``。多行注释使用斜杠和星号符号，可以跨越多行。例如，``/* 这是多行注释 */``.
+
+  * **标识符** - 由a-z和A-Z字母、UTF-8符号、数字和下划线组成的变量和函数的名称。名称可以以字母、下划线、``@`` 或 ``$`` 符号开头。以 ``$`` 开头的名称为在 **数据部分** 中定义的变量的名称。以 ``$`` 开头的名称还可以用于定义 **条件部分** 和 **操作部分** 范围内的全局变量。生态系统的合约可以使用 ``@`` 符号来调用。例如: ``@1NewTable(...)``。
+
+
+
+类型
+-----
+
+在 |galangres| 类型旁边指定了相应的golang类型。
+
+* **bool** - bool，默认值为 **false**；
+* **bytes** - []byte{}，默认值为空字节数组；
+* **int** - int64，默认值为 **0**；
+* **address** - uint64，默认值为 **0**；
+* **array** - []interface{}，默认值为空数组；
+* **map** - map[string]interface{}，默认值为空对象数组；
+* **money** - decimal.Decimal，默认值为 **0**；
+* **float** - float64，默认值为 **0**；
+* **string** - string，默认值为空字符串；
+* **file** - map[string]interface{}，默认值为空对象数组。
+
+这些类型的变量用 ``var`` 关键字定义。例如，``var var1, var2 int``。当这样定义一个变量时，它将获得其类型的默认值。
+
+所有变量值都具有 *interface{}* 类型，然后将它们分配给所需的golang类型。因此，例如 *array* 和 *map* 类型是golang类型 *[]interface{}* 和 *map[string]interface{}* 。这两种类型的数组都可以包含任何类型的元素。
+
+表达式
+-----------
+
+表达式可以包含算术运算、逻辑运算和函数调用。根据操作优先级从左到右计算所有表达式。如果操作优先级相同，评估也从左到右。
+
+从最高优先级到最低优先级的操作列表:
+
+* **函数调用和圆括号** - 调用函数时，将从左到右计算传递的参数；
+* **一元运算** - 逻辑否定 ``!`` 和算术符号变化 ``-``；
+* **乘法和除法** - 算术乘法 ``*`` 和除法 ``/``；
+* **加法和减法** - 算术加法 ``+`` 和减法 ``-``；
+* **逻辑比较** - ``>= > > >=``；
+* **逻辑相等和不相等** - ``== !=``；
+* **逻辑与** - ``&&``；
+* **逻辑或** - ``||``。
+
+当评估逻辑与和逻辑或时，在任何情况下都会计算表达式的两侧。
+
+|galangres| 在编译时没有类型检查。在评估操作数时，会尝试将类型转换为更复杂的类型。复杂度顺序的类型可以按照如下：``string, int, float, money``，仅实现了部分类型转换。字符串类型支持加法操作，结果会使得字符串连接。例如，``string + string = string, money - int = money, int * float = float``。
+
+对于函数，在执行时会对 ``string`` 和 ``int`` 类型执行类型检查。
+
+**array** 和 **map** 类型可以通过索引来寻址。对于 **array** 类型，必须将 **int** 值指定为索引。对于 **map** 类型，必须指定变量或 **string** 值。如果将值赋给索引大于当前最大索引的 **array** 元素，则将向数组添加空元素。这些元素的初始化值为 **nil** 。例如:
+.. code:: 
+
+   var my array
+   my[5] = 0
+   var mymap map
+   mymap["index"] = my[3]
+   
+在条件逻辑值的表达式中（例如 ``if，while，&&，||，!``），类型会自动转换为逻辑值，如果类型不为默认值，则为true。
+
+.. code:: 
+
+    var mymap map
+    var val string
+    if mymap && val {
+    ...
+    }
+
+
+范围
+-----
+
+大括号指定一个可以包含局部范围变量的块。默认情况下，变量的范围扩展到它自己的块和所有嵌套的块。在一个块中，可以使用现有变量的名称定义一个新变量。在这种情况下，具有相同名称的外部变量不可用。
+
+.. code:: 
+
+   var a int
+   a = 3
+   {
+      var a int
+      a = 4
+      Println(a) // 4
+   }
+   Println(a) // 3
+
+
+合约执行
+------------------
+
+当调用合约时，必须将 **data** 部分中定义的参数传递给它。在执行合约之前，虚拟机接收这些参数并将它们分配给相应的变量($Param)。然后调用预定义的 **conditions** 函数和 **action** 函数。
+
+合约执行期间发生的错误可分为两种类型：形式错误和环境错误。形式错误使用特殊命令生成：``error, warning, info`` 以及当内置函数返回 ``err`` 不等于 *nil* 时。
+
+|galangres| 语言不处理异常。任何错误都会终止合约的执行。由于在执行合约时创建了用于保存变量值的单独堆栈和结构，所以当合约执行完成时，golang垃圾回收机制将自动删除这些数据。
+
+巴科斯范式Backus–Naur Form (BNF)
+--------------------------------
+
+在计算机科学中，BNF是一种用于无上下文语法的符号技术，通常用于描述计算中使用的语言的语法。
+
+* <decimal digit> ::
+  
+  '0' | '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9'
+
+* <decimal number> ::
+
+  <decimal digit> {<decimal digit>}
+
+* <symbol code> ::
+
+  '''<any symbol>'''
+
+* <real number> ::
+
+  ['-'] <decimal number'.'[<decimal number>]
+
+* <integer number> ::
+
+  ['-'] <decimal number> | <symbol code>
+
+* <number> ::
+
+  '<integer number> | <real number>'
+
+* <letter> ::
+
+  'A' | 'B' | ... | 'Z' | 'a' | 'b' | ... | 'z' | 0x80 | 0x81 | ... | 0xFF
+
+* <space> ::
+
+  '0x20'
+
+* <tabulation> ::
+
+  '0x09'
+
+* <newline> ::
+
+  '0x0D 0x0A'
+
+* <special symbol> ::
+
+  '!' | '"' | '$' | ''' | '(' | ')' | '\*' | '+' | ',' | '-' | '.' | '/' | '<' | '=' | '>' | '[' | '\\' | ']' | '_' | '|' | '}' | '{' | <tabulation> | <space> | <newline>
+
+* <symbol> ::
+
+  <decimal digit> | <letter> | <special symbol>
+
+* <name> ::
+
+  (<letter> | '_') {<letter> | '_' | <decimal digit>}
+
+* <function name> ::
+
+  <name>
+
+* <variable name> ::
+
+  <name>
+
+* <type name> ::
+
+  <name>
+
+* <string symbol> ::
+
+  <tabulation> | <space> | '!' | '#' | ... | '[' | ']' | ... 
+
+* <string element> ::
+
+  {<string symbol> | '\"' | '\n' | '\r' }
+
+* <string> ::
+
+  '"' { <string element> } '"' | '\`'  { <string element> } '\`'
+
+* <assignment operator> ::
+
+  '=' 
+
+* <unary operator> ::
+
+  '-'
+
+* <binary operator> ::
+
+  '==' | '!=' | '>' | '<' | '<=' | '>=' | '&&' | '||' | '\*' | '/' | '+' | '-' 
+
+* <operator> ::
+
+  <assignment operator> | <unary operator> | <binary operator>
+
+* <parameters> ::
+
+  <expression> {','<expression>}
+
+* <contract call> ::
+
+  <contract name> '(' [<parameters>] ')'
+
+* <function call> ::
+
+  <contract call> [{'.' <name> '(' [<parameters>] ')'}]
+
+* <block contents> ::
+
+  <block command> {<newline><block command>}
+
+* <block> ::
+
+  '{'<block contents>'}'
+
+* <block command> ::
+
+  (<block> | <expression> | <variables definition> | <if> | <while> | break | continue | return)
+
+* <if> ::
+
+  'if <expression><block> [else <block>]'
+
+* <while> ::
+
+  'while <expression><block>'
+
+* <contract> ::
+
+  'contract <name> '{'[<data section>] {<function>} [<conditions>] [<action>]'}''
+
+* <data section> ::
+
+  'data '{' {<data parameter><newline>} '}''
+
+* <data parameter> ::
+
+  <variable name> <type name> '"'{<tag>}'"' 
+
+* <tag> ::
+
+  'optional | image | file | hidden | text | polymap | map | address | signature:<name>'
+
+* <conditions> ::
+
+  'conditions <block>'
+
+* <action> ::
+
+  'action <block>'
+
+* <function> ::
+
+  'func <function name>'('[<variable description>{','<variable description>}]')'[{<tail>}] [<type name>] <block>'
+
+* <variable description> ::
+
+  <variable name> {',' <variable name>} <type name>
+
+* <tail> ::
+
+  '.'<function name>'('[<variable description>{','<variable description>}]')'
+
+* <variables definition> :: 
+
+  'var <variable description>{','<variable description>}'
