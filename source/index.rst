@@ -38,9 +38,9 @@
 1. 面对政府、事业单位的项目，依然使用“政务链”，英文名为 **GAChain** ( Government Affairs Chain);
 2. 面对商业机构、个人客户，中文使用“智乾链”，英文名依然为 **GAChain** 。
 
-|platform| 平台的软件客户端起名为Govis和编程语言：智语言（|galangres| Language）为合约语言和乾语言（|gastyleres| Language）为界面编辑语言。同时，启动了源代码重构过程：软件客户端的代码被完全重写（基于JavaScript React库），创建了REST API v2的新版本，智语言（|galangres| Language）和乾语言（|gastyleres| Language）得到显着改善。另外，开发了专门生态系统的概念和功能，开始了视觉页面设计器的工作，并且实施了一些其它相关性改变和改进。
+|platform| 平台的软件客户端名为Govis，其编程语言：智语言（|galangres| Language）为合约语言和乾语言（|gastyleres| Language）为页面编辑语言。同时，启动了源代码重构过程：软件客户端的代码被完全重写（基于JavaScript React库），创建RESTful API v2的新版接口，智语言和乾语言进行显著优化改善。另外，开发虚拟专用生态系统的概念和功能以及视觉页面设计器，并且实现了一些其它相关性改变和改进。
 
-到2018年初，政务链（|platform|）平台已经做好与当前火热的区块链平台Ethereum、NEO相竞争的准备，团队相信，政务链（|platform|）在具有颠覆性的产品规划设计、优秀性能等优势，必将对现有区块链产品带来从概念到实际应用的冲击。
+到2018年初，政务链（|platform|）平台已经做好与当前火热的区块链平台Ethereum、NEO相竞争的准备，团队相信，政务链（|platform|）具有颠覆性的产品规划设计、优秀性能等优势，必将对现有区块链产品带来从概念到实际应用的冲击。
 
 区块链颠覆了现有常规技术和观念，政务链颠覆了现有常规区块链！
 
